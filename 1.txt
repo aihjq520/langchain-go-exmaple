@@ -1,0 +1,106 @@
+你好 这是你的名字mor
+今天天气怎么样
+
+我觉得阿斯顿马上
+虽然创建空目录看似是一种空操作，但它可以带来以下好处：
+
+提前规划好目录，等于提前规划好以后的功能，起到一种提示功能：这部分功能需要补充；
+
+提前创建好目录，可以使后来的文件按目录功能存放在预先规划好的目录中，使项目更加规范。
+
+比如，这时候，我们就可以将之前设计好的规范存放在 docs/devel/zh-CN/conversions 目录中，内容如下：
+
+$ ls docs/devel/zh-CN/conversions/
+api.md  commit.md  directory.md  error_code.md  go_code.md  log.md  README.md  version.md
+提示：
+
+错误规范（error_code.md）和日志规范（error_code.md）可以在具体设计错误包和日志包的时候制定，这里先留空占位。
+Git 不追踪空目录，为了让 Git 追踪空目录，我们可以在空目录下创建一个空文件 .keep，并在适当的时候执行以下命令删除这些临时的 .keep 文件：find . -name .keep | xargs -i rm {}。
+创建 Hello World 程序
+一个全新的项目，首先需要编写一个最简单的 Hello World 程序，用来检查开发、编译环境是否就绪。根据目录规范，需要在 cmd/miniblog 目录下创建 main.go 文件，内容如下：
+
+package main
+import "fmt"
+// Go 程序的默认入口函数(主函数).
+func main() {
+    fmt.Println("Hello MiniBlog!")
+}
+然后，编译并运行，命令如下：
+
+$ gofmt -s -w ./
+$ go build -o _output/miniblog -v cmd/miniblog/main.go
+command-line-arguments
+$ ls _output/
+miniblog
+$ ./_output/miniblog
+Hello MiniBlog
+可以看到，成功编译并运行了 miniblog 二进制程序，说明我们的开发、编译环境是就绪的！后面就可以愉快地进行代码开发了。
+
+这里，有两点你需要注意：
+
+很多项目中会将 main 文件名跟应用程序名字保持一致，例如：miniblog.go，从效果上来说，其实完全没有任何影响，但我日常开发时，更喜欢将 main 文件命名为 main.go，原因是这样的文件名，能够明确告诉其他开发者，这是一个 main 文件。
+
+我们通常需要将构建产物、临时文件等存放在一个单独的目录中，例如：_output。这样的好处：一方面，我们能够很方便地找到并使用这些构建产物或者方便、安全地清理这些产物，例如只需要执行 rm -rf _output 即可清理这些产物。另一方面，我们还可以将 _output 目录加入到 .gitignore 文件中，告诉 Git 不要追踪这些临时产物。
+
+程序实时加载、构建、启动
+在开发过程中，我们经常需要修改代码、编译代码、重新启动程序，然后测试程序。这个过程如果每次都手工操作，无疑效率是比较低的，那么有没有什么手段或者工具能够解放双手，提高开发效率呢？答案是：可以使用一些程序热加载工具。
+
+业界当前有很多好用的程序热加载工具，在 Go 项目开发中，比较受欢迎的是 air 工具。关于如何使用 air 工具，你可以直接参考官方文档 Air 官方文档。
+
+接下来，我们就来配置、使用 air 工具。具体分为以下几步：
+
+安装 air 工具。
+$ go install github.com/cosmtrek/air@latest
+配置 air 工具。
+这里我们使用 air 官方仓库中给出的示例配置：air_example.toml。air_example.toml 里面的示例配置基本能满足绝大部分的项目需求，一般只需要再配置 cmd、bin、args_bin 3 个参数即可。
+
+在 miniblog 项目根目录下创建 .air.toml 文件，内容见 .air.toml。
+
+.air.toml 基于 air_example.toml 文件修改了以下参数配置：
+
+# 只需要写你平常编译使用的 shell 命令。你也可以使用 `make`.
+cmd = "make build"
+# 由 `cmd` 命令得到的二进制文件名.
+bin = "_output/miniblog"
+参数介绍：
+
+cmd：指定了监听文件有变化时，air 需要执行的命令，这里指定了 make build 重新构建 miniblog 二进制文件；
+
+bin：指定了执行完 cmd 命令后，执行的二进制文件，这里指定了编译构建后的二进制文件 _output/miniblog。
+
+启动 air 工具。
+配置好后，在项目根目录下运行 air 命令：
+
+$ air # 默认使用当前目录下的 .air.toml 配置，你可以通过 `-c` 选项指定配置，例如：`air -c .air.toml`
+...
+mkdir /home/colin/workspace/golang/src/github.com/marmotedu/miniblog/tmp
+watching .
+watching _output
+...
+watching scripts
+!exclude tmp
+building...
+running...
+Hello MiniBlog
+修改 cmd/miniblog/main.go 文件，MiniBlog 变更为 MiniBlog!，观察 air 终端窗口：
+
+...
+running...
+Hello MiniBlog
+cmd/ miniblog /main.go has changed
+building...
+running...
+Hello MiniBlog!
+可以看到 air 根据我们指定的命令，重新编译并启动了 miniblog 服务。
+
+编写 API 文档
+Go 项目绝大部分是后端 API 服务，当前一般采用前后端分离的软件架构，前后端分离有很多好处，例如：使前后端功能迭代互不影响，可以减小代码维护的复杂度、加快发布速度；使前后端可以并行开发，提高开发效率，前后端通过 API 文档进行耦合；使专业的人做专业的事，确保代码质量。
+
+前后端并行开发，需要依赖于 API 接口文档，所以在项目初期，首先要编写好 API 文档，编写 API 文档时需要关注：API 文档规范和编写方式。
+
+API 文档规范
+理论来说，只要在团队内约定好 API 编写和呈现规范，那么你可以根据需要创建任意规范，但不建议这么做，更建议使用社区已经成熟的 API 文档规范。好处有很多：
+
+使用社区已经存在的、成熟的 API 文档规范，可以提高 API 文档的质量、减少工作量、提高编写效率；
+
+使用社区的 API 文档规范，也天然可以使用社区针对改 API 规范所开发的各种工具，例如：文档编辑器、代码生成器、代码校验器等；
